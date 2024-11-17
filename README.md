@@ -32,8 +32,8 @@ The Trade Reporting Engine is a Spring Boot application designed to process trad
 ### 1. Clone the Repository
 
 ```bash
-git clone https://github.com/TODO
-cd trade-reporting-engine
+git clone https://github.com/ZeeshanM20/trade-reporting-engine-springboot
+cd trade-reporting-engine-springboot
 ```
 
 ### 2. Build the Application
@@ -136,4 +136,3 @@ Filter Criteria Only report events to JSON response if the following 3 criteria 
 
 1. new API is needed as the triggering point.
 2. When implementing this topic, we would better to consider the scalability and maintainability when the business wants to change the condition/logic of extracting events
-
