@@ -65,6 +65,48 @@ To run the tests, use:
 ```bash
 mvn test
 ```
+
+# Design and Implementation
+The Trade Reporting Engine is designed to process XML trade event files, apply filtering criteria, and expose the results through REST APIs. The core components of the system are divided into XML Parsing, Business Logic, and Persistence.
+
+## XML Parsing
+Trade event data is read from XML files using the javax.xml.parsers.DocumentBuilder and javax.xml.xpath.XPath classes. 
+The system extracts key fields like buyerParty, sellerParty, premiumAmount, and premiumCurrency based on the following XPath expressions:
+
+//buyerPartyReference/@href → buyer_party
+//sellerPartyReference/@href → seller_party
+//paymentAmount/amount → premium_amount
+//paymentAmount/currency → premium_currency
+
+These values are then stored in an in-memory database (H2) for further processing.
+
+## Business Logic
+The filtering rules are encapsulated within the EventService class. The logic applies the following criteria:
+
+- Seller and Currency Filter: Only include events where:
+  - The sellerParty is either EMU_BANK with premiumCurrency of AUD, or BISON_BANK with premiumCurrency of USD.
+- Anagram Check: Exclude events where the buyerParty and sellerParty are anagrams. This is accomplished by comparing sorted character arrays of both parties.
+
+This structure allows for easy expansion in the future: new filters can be added without affecting existing functionality.
+
+## Persistence Layer
+Using Spring Data JPA, the application persists trade event data in the events table. The table schema consists of:
+
+- id: Primary key for the event.
+- buyer_party: The buyer's party reference.
+- seller_party: The seller's party reference.
+- premium_amount: The premium amount for the trade event.
+- premium_currency: The currency of the premium amount.
+
+Spring JPA handles automatic schema creation and updates when the application starts.
+
+## Scalability and Maintainability
+The design prioritizes scalability and maintainability:
+
+- The business logic (filtering) is modular and can be extended to support new rules without significant changes to the existing code.
+- The EventService class can easily accommodate additional filtering criteria, and the XML parsing and database persistence are separated for clarity and ease of modification.
+
+
 # Project Structure
 ## Key Files
 ### EventController.java
@@ -114,25 +156,9 @@ mvn test
 
 #### Description:
 
-Create a Java program (SpringBoot) that reads a set of XML event files, extracts a set of elements (fields), stores them into DB, filters the events based on a set of criteria, and reports the events in JSON Format.
-The eventN.xml files are included in the email and instructions. When reading the event XML files, keep the Java code simple, consider using the following XML parser and Xpath reader included in the JDK: javax.xml.parsers.DocumentBuilder, javax.xml.xpath.Xpath. Once the information is read from XML. We need to store them in DB via JPA. And then we query the information based on the following criteria and return them as the HTTP response. During the design, we need to consider how to extend or add more criteria later without impacting the existing filters.
+Create a Java program (Spring Boot) that reads a set of XML event files, extracts a set of elements (fields), stores them into the database, filters the events based on specified criteria, and reports the events in JSON format. The XML elements to be used for filtering include buyerParty, sellerParty, premiumAmount, and premiumCurrency. The system filters events where:
 
+- The seller_party is either EMU_BANK (with AUD currency) or BISON_BANK (with USD currency).
+- The buyer_party and seller_party must not be anagrams.
 
-The following XML elements should be used for the filter criteria and then only these fields should be included in the response.
-
-EMU_BANK,LEFT_BANK,100.0,AUD
-
-Xml elements (fields) to use Format: xpath expression from event file => column header name
-
-//buyerPartyReference/@href => buyer_party
-//sellerPartyReference/@href => seller_party
-//paymentAmount/amount => premium_amount
-//paymentAmount/currency => premium_currency
-
-Filter Criteria Only report events to JSON response if the following 3 criteria are true:
-
-- (The seller_party is EMU_BANK and the premium_currency is AUD) or (the seller_party is BISON_BANK and the premium_currency is USD)
-- The seller_party and buyer_party must not be anagrams Only events that match all criteria should be reported.
-
-1. new API is needed as the triggering point.
-2. When implementing this topic, we would better to consider the scalability and maintainability when the business wants to change the condition/logic of extracting events
+A new API endpoint is created to trigger the filtering process, and the system is designed with maintainability in mind, allowing for easy modification of filtering criteria in the future.
